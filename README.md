@@ -1,32 +1,6 @@
 # cultural_speech_projectOverview
 This project provides a Python implementation for Chinese speech recognition, cultural intent classification, and cultural text generation. The acoustic network uses MFCC features, a bidirectional LSTM encoder, and a CTC output head. A blank-aware differentiable bridge maps CTC character posteriors into continuous semantic vectors, which are consumed by a semantic LSTM and a conditional generation LSTM.
 
-The three intent classes are cultural_inquiry, emotional_expression, and creative_request. The generation tasks include classical poetry continuation and cultural story generation.
-Architecture and mathematical formulation
-The input waveform is resampled to 16 kHz and represented by 13 static MFCC coefficients plus first- and second-order temporal differences:
-\[
-\mathbf{x}_t = [\mathrm{MFCC}_{13}(t);\,\Delta\mathrm{MFCC}_{13}(t);\,\Delta^2\mathrm{MFCC}_{13}(t)] \in \mathbb{R}^{39}.
-\]
-A three-layer bidirectional LSTM produces a context-dependent acoustic state, followed by a linear character classifier and softmax:
-\[
-\mathbf{h}_t = [\overrightarrow{\mathrm{LSTM}}(\mathbf{x})_t;\overleftarrow{\mathrm{LSTM}}(\mathbf{x})_t], \qquad
-p_t(k)=\mathrm{softmax}(W\mathbf{h}_t+b)_k.
-\]
-The CTC blank posterior is separated from the distribution over output characters. With blank index $\varnothing$, non-blank confidence $r_t$, and character embedding matrix $E$, the bridge computes:
-\[
-r_t=1-p_t(\varnothing), \qquad
-\bar p_t(k)=\frac{p_t(k)}{\max(r_t,\varepsilon)}\quad(k\neq\varnothing), \qquad
-\mathbf{z}_t=r_t\sum_{k\neq\varnothing}\bar p_t(k)E_k.
-\]
-The semantic LSTM processes $\mathbf{z}_{1:T}$; confidence-weighted pooling produces a sentence representation for three-way intent classification and decoder initialization. The generation LSTM uses teacher forcing during training. CTC candidate re-ranking combines the acoustic log score with cosine similarity in the shared semantic space:
-\[
-S(y)=\log P_{\mathrm{CTC}}(y\mid x)+\lambda\mathrm{cos}(\mathbf{s}_{\mathrm{audio}},\mathbf{s}_{y}).
-\]
-The coefficient $\lambda$ is selected using validation samples by scripts/tune_rerank.py. Joint training uses:
-\[
-\mathcal{L}=0.60\mathcal{L}_{\mathrm{CTC}}+0.25\mathcal{L}_{\mathrm{intent}}+0.15\mathcal{L}_{\mathrm{generation}}.
-\]
-The CTC term is sequence negative log-likelihood, the intent term is cross-entropy over three categories, and the generation term is token-level negative log-likelihood.
 Model and training configuration
 The full configuration is configs/paper.yaml; the following values are read from that file.
 Category	Setting	Value
